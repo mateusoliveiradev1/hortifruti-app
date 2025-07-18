@@ -8,7 +8,8 @@ const regrasParaCadastrar = [
   {
     nome: "Turno Padrão Semana",
     tipo: "semana",
-    configuracao: {
+    configuracao: JSON.stringify({
+      // <--- AJUSTE AQUI
       horarioInicio: "07:00",
       horarioFim: "15:20",
       temAlmoco: true,
@@ -16,24 +17,25 @@ const regrasParaCadastrar = [
         { cargo: "lider", quantidade: 2 },
         { cargo: "repositor", quantidade: 3 },
       ],
-    },
+    }),
     ativo: true,
   },
   {
     nome: "Turno Domingo/Feriado",
     tipo: "domingo_feriado",
-    configuracao: {
+    configuracao: JSON.stringify({
+      // <--- AJUSTE AQUI
       horarioInicio: "07:00",
       horarioFim: "13:00",
       temAlmoco: false,
       cargos: [{ cargo: "repositor", quantidade: 2 }],
-    },
+    }),
     ativo: true,
   },
   {
     nome: "Folga Semanal",
     tipo: "folga",
-    configuracao: { diasPreferencia: [2, 4] },
+    configuracao: JSON.stringify({ diasPreferencia: [2, 4] }), // <--- AJUSTE AQUI
     ativo: true,
   },
 ];

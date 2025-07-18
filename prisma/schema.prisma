@@ -206,7 +206,7 @@ model HistoricoWhatsApp {
 model RegraEscala {
   id          String   @id @default(cuid())
   nome        String
-  tipo        String   // "horario", "intervalo", "folga", "domingo"
+  tipo        String   @unique // "horario", "intervalo", "folga", "domingo"
   configuracao String  @db.Text // JSON com configurações específicas
   ativo       Boolean  @default(true)
   
