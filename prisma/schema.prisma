@@ -1,0 +1,215 @@
+generator client {
+    provider = "prisma-client-js"
+    binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+datasource db {
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  hashedPassword String?
+  accounts      Account[]
+  sessions      Session[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// Escalas models
+model Colaborador {
+  id            String   @id @default(cuid())
+  nome          String
+  email         String   @unique
+  cargo         String   // "repositor" ou "lider"
+  ativo         Boolean  @default(true)
+  
+  // Regras específicas
+  horarioFixo   Boolean  @default(false)
+  horarioInicio String?  // Ex: "10:00"
+  horarioFim    String?  // Ex: "19:20"
+  
+  // Regras de domingo
+  trabalhaDomingo Boolean @default(true)
+  padraoFolgaDomingo String @default("2x2") // "1x1" para Amanda, "2x2" para homens
+  
+  // Configurações WhatsApp
+  telefone      String?
+  
+  // Relações
+  turnos        Turno[]
+  escalas       EscalaColaborador[]
+  historicoWhatsApp HistoricoWhatsApp[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model EscalaMensal {
+  id          String   @id @default(cuid())
+  mes         Int      // 1-12
+  ano         Int
+  status      String   @default("ativa") // "ativa", "arquivada"
+  
+  // Relações
+  colaboradores EscalaColaborador[]
+  turnos        Turno[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([mes, ano])
+}
+
+model EscalaColaborador {
+  id            String   @id @default(cuid())
+  colaboradorId String
+  escalaMensalId String
+  
+  // Relações
+  colaborador   Colaborador  @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  escalaMensal  EscalaMensal @relation(fields: [escalaMensalId], references: [id], onDelete: Cascade)
+  turnos        Turno[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([colaboradorId, escalaMensalId])
+}
+
+model Turno {
+  id          String   @id @default(cuid())
+  data        DateTime
+  
+  // Horários
+  horarioInicio String   // Ex: "07:00"
+  horarioFim    String   // Ex: "15:20"
+  
+  // Tipo de turno
+  tipoTurno     String   // "normal", "domingo", "feriado"
+  
+  // Pausas
+  temAlmoco     Boolean  @default(true)
+  inicioAlmoco  String?  // Ex: "12:00"
+  fimAlmoco     String?  // Ex: "14:00"
+  
+  // Relações
+  colaboradorId     String
+  escalaMensalId    String
+  escalaColaboradorId String?
+  
+  colaborador       Colaborador        @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  escalaMensal      EscalaMensal       @relation(fields: [escalaMensalId], references: [id], onDelete: Cascade)
+  escalaColaborador EscalaColaborador? @relation(fields: [escalaColaboradorId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([data])
+  @@index([colaboradorId, data])
+}
+
+model Feriado {
+  id          String   @id @default(cuid())
+  data        DateTime
+  nome        String
+  tipo        String   // "nacional", "estadual", "municipal"
+  nivel       String   // "obrigatorio", "facultativo"
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([data, tipo])
+}
+
+model ConfiguracaoWhatsApp {
+  id          String   @id @default(cuid())
+  instanceId  String?
+  token       String?
+  ativo       Boolean  @default(false)
+  
+  // Configurações de envio
+  envioAutomatico Boolean @default(true)
+  diaEnvio       Int     @default(0) // 0=domingo, 1=segunda, etc
+  horarioEnvio   String  @default("18:00")
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model HistoricoWhatsApp {
+  id            String   @id @default(cuid())
+  colaboradorId String
+  dataEnvio     DateTime
+  tipoEnvio     String   // "automatico", "manual"
+  status        String   // "enviado", "erro", "pendente"
+  mensagem      String?  @db.Text
+  resposta      String?  @db.Text
+  
+  // Relações
+  colaborador   Colaborador @relation(fields: [colaboradorId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([colaboradorId])
+  @@index([dataEnvio])
+}
+
+model RegraEscala {
+  id          String   @id @default(cuid())
+  nome        String
+  tipo        String   // "horario", "intervalo", "folga", "domingo"
+  configuracao String  @db.Text // JSON com configurações específicas
+  ativo       Boolean  @default(true)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
